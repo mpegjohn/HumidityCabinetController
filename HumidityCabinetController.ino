@@ -6,7 +6,7 @@
 #include "PID_v1.h"
 
 #define PIN_OUTPUT 10
-
+#define HUMIDITY_PIN A0
 
 // Define the display pins
 // DISPLAY 1
@@ -35,40 +35,41 @@ double Kp=100, Ki=3, Kd=0;
 //double Kp=20, Ki=4, Kd=1;
 PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
 double start;
+boolean TempReached;
 
 void setup() {
-  //wdt_enable(WDTO_4S);
   // Turn the displays on
   display1.setBrightness(2);
   display2.setBrightness(2);
+  pinMode(HUMIDITY_PIN, OUTPUT);
+
+  digitalWrite(HUMIDITY_PIN, LOW);
 
   // Start sensor
   sensor.begin();
   start = millis();
     //initialize the variables we're linked to
   Input = sensor.readTemperature();
-  Setpoint = 22.0;
+  Setpoint = 23.0;
 
+  TempReached = false;
   //turn the PID on
   myPID.SetMode(AUTOMATIC);
 }
 
 void loop() {
-  //wdt_reset();
   
   Humidity = sensor.readHumidity();
   Temperature = sensor.readTemperature();
-
-
-  // LED indicator on
-  //digitalWrite(13, HIGH);
-
   
   Input = (double)Temperature;
   
+  if((Temperature > (Setpoint - 0.3)) && (TempReached == false)) {
+    TempReached = true;
+  }
+  
   myPID.Compute();
   analogWrite(PIN_OUTPUT, Output);
-  //analogWrite(PIN_OUTPUT, 128);
 
   if(millis() >= start + 1500)
   {
@@ -76,15 +77,16 @@ void loop() {
     //display1.showNumberDec(Temperature);
     display1.showNumberDecEx(round(Temperature*100), (0x80 >> 1), true);
     display2.showNumberDecEx(round(Humidity*100), (0x80 >> 1), true);
-      
+    if(!TempReached)
+    {
+      digitalWrite(HUMIDITY_PIN, LOW);
+    }
+    else if((Humidity > 92.5) && TempReached){
+      digitalWrite(HUMIDITY_PIN, LOW);   
+    }
+    else if((Humidity < 92.0) && TempReached) {
+      digitalWrite(HUMIDITY_PIN, HIGH);
+    }
+
   }
-  
-  //wdt_reset();  
-  //delay(100);
-
-  // LED indicator off
-  //digitalWrite(13, LOW);
-
-  //delay(1400);
-
 }
